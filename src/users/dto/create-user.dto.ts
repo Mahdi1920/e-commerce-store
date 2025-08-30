@@ -2,7 +2,10 @@ import { IsEmail, IsNotEmpty, MinLength, IsOptional, IsEnum, IsString, IsBoolean
 import { UserRole } from '../../common/enums/role.enum';
 
 export class CreateUserDto {
-  @IsNotEmpty() 
+  @IsNotEmpty()
+  id: string;
+
+  @IsNotEmpty()
   fullname: string;
 
   @IsNotEmpty() 

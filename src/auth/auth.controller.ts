@@ -1,6 +1,8 @@
 import {
   Body,
   Controller,
+  Get,
+  Param,
   Post,
   UploadedFile,
   UseInterceptors,
@@ -23,11 +25,18 @@ export class AuthController {
   ) {
     return this.authService.register(registerDto, file);
   }
+  
+  // ACTIVATE ACCOUNT
+  @Get('activate/:token')
+  async activate(@Param('token') token: string) {
+    return this.authService.activateAccount(token);
+  }
 
   // LOGIN returns JWT accessToken
-  @Post('login')
+  /* @Post('login')
   async login(@Body() loginDto: LoginDto) {
     const { email, password } = loginDto;
     return this.authService.login(email, password);
-  }
+  } */
+
 }

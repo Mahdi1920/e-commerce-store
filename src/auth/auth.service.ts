@@ -7,37 +7,64 @@ import { RegisterDto } from "./dto/register.dto";
 import { UserRole } from "../common/enums/role.enum";
 import { InjectModel } from "@nestjs/mongoose";
 import { JwtService } from "@nestjs/jwt";
-import { log } from "console";
+import { MailService } from "../mail/mail.service";
 
 @Injectable()
 export class AuthService {
   constructor(@InjectModel(User.name) private readonly userModel: Model<UserDocument>,
     private readonly usersService: UsersService,
-    private readonly jwtService: JwtService) {}
+    private readonly jwtService: JwtService,
+    private readonly mailService: MailService,
+  ) {}
 
   async register(dto: RegisterDto, file?: Express.Multer.File) {
-    //console.log('Registering user:', dto);
-    return this.usersService.createUser(
-      {
-        ...dto,
-        role: UserRole.CUSTOMER, // enforce default role
-        isActive: false,         // enforce inactive until email verification
-      },
-      file
-    );
-  }
+  const user = await this.usersService.createUser(
+    {
+      ...dto,
+      role: UserRole.CUSTOMER,
+      isActive: false,
+    },
+    file
+  );
+
+  // generate activation token (JWT or random string)
+  const activationToken = this.jwtService.sign(
+    { userId: user.id },
+    { expiresIn: '1d' }
+  );
+
+  const activationLink = `${process.env.BACKEND_URL}/auth/activate/${activationToken}`;
+
+  // send activation email
+  await this.mailService.sendUserActivationEmail(user.email, activationLink);
+
+  return { message: 'Registration successful. Please check your email to activate your account.' };
+}
+
   
-  async activateAccount(userId: string): Promise<Partial<User>> {
-    const updatedUser = await this.userModel
-      .findByIdAndUpdate(userId, { isActive: true }, { new: true })
-      .select("-password")
-      .exec();
+  async activateAccount(token: string): Promise<{ message: string }> {
+  try {
+    // verify JWT
+    const payload = this.jwtService.verify(token);
+    const userId = payload.userId; // since you used { userId: user.email }
 
-    if (!updatedUser) throw new NotFoundException("User not found");
-    return updatedUser;
+    // update user to active
+    const updatedUser = await this.userModel.findOneAndUpdate(
+      { userId },
+      { isActive: true },
+      { new: true }
+    );
+
+    if (!updatedUser) throw new NotFoundException('User not found');
+
+    return { message: 'Account successfully activated. You can now log in.' };
+  } catch (err) {
+    throw new UnauthorizedException('Invalid or expired activation token');
   }
+}
 
-  async login(email: string, password: string): Promise<{ accessToken: string; user: Partial<User> }> {
+
+  /* async login(email: string, password: string): Promise<{ accessToken: string; user: Partial<User> }> {
     const user = await this.userModel.findOne({ email }).exec();
     if (!user) throw new NotFoundException("User not found");
 
@@ -71,5 +98,5 @@ export class AuthService {
 
     const { password, ...result } = user.toObject();
     return result;
-  }
+  } */
 }

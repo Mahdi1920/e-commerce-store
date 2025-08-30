@@ -1,7 +1,10 @@
-import { IsEmail, IsOptional, MinLength, IsEnum, IsString, IsBoolean, IsArray } from 'class-validator';
+import { IsEmail, IsOptional, MinLength, IsEnum, IsString, IsBoolean, IsArray, IsNotEmpty } from 'class-validator';
 import { UserRole } from '../../common/enums/role.enum';
 
 export class UpdateUserDto {
+  @IsNotEmpty()
+  id: string;
+  
   @IsOptional()
   @IsString()
   fullname?: string;
